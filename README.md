@@ -13,7 +13,7 @@ type Client interface {
 	// 获取文件地址
 	GetSignURL(bucketName, objectID string, options ...oss.Option) (string, error)
 	// 删除文件地址
-	Delete(bucketName, objectID string) error
+	DeleteObject(bucketName, objectID string) error
 	// 获取所有object列表
 	ListObjects(bucketName string) (*oss.ListObjectsResult, error)
 }
