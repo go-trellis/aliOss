@@ -1,0 +1,7 @@
+trellis:
+  alioss:
+    end_point: https://sample  #http://sample or sample: url schema
+    domain: sample.com
+    access_id: accid
+    access_key: acckey
+    expire_seconds: 3600
