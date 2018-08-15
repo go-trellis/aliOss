@@ -131,7 +131,12 @@ func (p *client) GetSignURL(bucketName, objectID string, options ...oss.Option) 
 
 	b, ok := p.getOssBuckets(bucketName)
 	if !ok {
-		return "", fmt.Errorf("unknown bucket name: %s", bucketName)
+		var err error
+		b, err = p.ossClient.Bucket(bucketName)
+		if err != nil {
+			return "", err
+		}
+		p.setOssBuckets(bucketName, b)
 	}
 
 	url, err := b.SignURL(objectID, oss.HTTPGet, p.Trellis.AliOss.ExpireSeconds, options...)
@@ -146,26 +151,34 @@ func (p *client) GetSignURL(bucketName, objectID string, options ...oss.Option) 
 	return url, nil
 }
 
-func (p *client) ListObjects(bucketName string) (*oss.ListObjectsResult, error) {
+func (p *client) ListObjects(bucketName string) (res *oss.ListObjectsResult, err error) {
 	b, ok := p.getOssBuckets(bucketName)
 	if !ok {
-		return nil, fmt.Errorf("unknown bucket name: %s", bucketName)
+		b, err = p.ossClient.Bucket(bucketName)
+		if err != nil {
+			return
+		}
+		p.setOssBuckets(bucketName, b)
 	}
 
-	result, err := b.ListObjects()
-	if err != nil {
-		return nil, err
+	result, e := b.ListObjects()
+	if e != nil {
+		return nil, e
 	}
 	return &result, nil
 }
 
-func (p *client) DeleteObject(bucketName, objectID string) error {
+func (p *client) DeleteObject(bucketName, objectID string) (err error) {
 
 	objectID = strings.TrimPrefix(objectID, AliossPrefix)
 
 	b, ok := p.getOssBuckets(bucketName)
 	if !ok {
-		return fmt.Errorf("unknown bucket name: %s", bucketName)
+		b, err = p.ossClient.Bucket(bucketName)
+		if err != nil {
+			return
+		}
+		p.setOssBuckets(bucketName, b)
 	}
 
 	return b.DeleteObject(objectID)
