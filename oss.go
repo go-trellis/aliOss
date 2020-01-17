@@ -1,3 +1,6 @@
+// GNU GPL v3 License
+// Copyright (c) 2019 github.com:go-trellis
+
 package alioss
 
 import (
@@ -99,7 +102,7 @@ func NewClient(accessID, accessKey, endPoint string, expireSeconds int64) (Clien
 func (p *client) GenObjectID(prefixPath, fileSuffix string) string {
 
 	path := AliossPrefix + path.Join(prefixPath,
-		strings.Replace(uuid.Must(uuid.NewV4()).String(), "-", "", -1))
+		strings.Replace(uuid.NewV4().String(), "-", "", -1))
 	if len(fileSuffix) == 0 {
 		return path
 	}
