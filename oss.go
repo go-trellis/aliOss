@@ -75,8 +75,14 @@ func (p *client) setOssBuckets(name string, bucket *oss.Bucket) {
 
 // NewClientFromFile 从配置文件读取
 func NewClientFromFile(filePath string) (Client, error) {
+	r, err := config.NewSuffixReader(config.ReaderOptionFilename(filePath))
+	if err != nil {
+		return nil, err
+	}
+
 	c := &client{}
-	if err := config.NewSuffixReader().Read(filePath, c); err != nil {
+	err = r.Read(c)
+	if err != nil {
 		return nil, err
 	}
 

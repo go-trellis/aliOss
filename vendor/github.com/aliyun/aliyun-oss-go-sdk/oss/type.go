@@ -53,7 +53,9 @@ type LifecycleRule struct {
 	Transitions          []LifecycleTransition          `xml:"Transition,omitempty"`           // The transition property
 	AbortMultipartUpload *LifecycleAbortMultipartUpload `xml:"AbortMultipartUpload,omitempty"` // The AbortMultipartUpload property
 	NonVersionExpiration *LifecycleVersionExpiration    `xml:"NoncurrentVersionExpiration,omitempty"`
-	NonVersionTransition *LifecycleVersionTransition    `xml:"NoncurrentVersionTransition,omitempty"`
+	// Deprecated: Use NonVersionTransitions instead.
+	NonVersionTransition  *LifecycleVersionTransition  `xml:"-"` // NonVersionTransition is not suggested to use
+	NonVersionTransitions []LifecycleVersionTransition `xml:"NoncurrentVersionTransition,omitempty"`
 }
 
 // LifecycleExpiration defines the rule's expiration property
@@ -121,7 +123,7 @@ func verifyLifecycleRules(rules []LifecycleRule) error {
 	if len(rules) == 0 {
 		return fmt.Errorf("invalid rules, the length of rules is zero")
 	}
-	for _, rule := range rules {
+	for k, rule := range rules {
 		if rule.Status != "Enabled" && rule.Status != "Disabled" {
 			return fmt.Errorf("invalid rule, the value of status must be Enabled or Disabled")
 		}
@@ -135,20 +137,19 @@ func verifyLifecycleRules(rules []LifecycleRule) error {
 
 		transitions := rule.Transitions
 		if len(transitions) > 0 {
-			if len(transitions) > 2 {
-				return fmt.Errorf("invalid count of transition lifecycles, the count must than less than 3")
-			}
-
 			for _, transition := range transitions {
 				if (transition.Days != 0 && transition.CreatedBeforeDate != "") || (transition.Days == 0 && transition.CreatedBeforeDate == "") {
 					return fmt.Errorf("invalid transition lifecycle, must be set one of CreatedBeforeDate and Days")
 				}
-				if transition.StorageClass != StorageIA && transition.StorageClass != StorageArchive {
-					return fmt.Errorf("invalid transition lifecylce, the value of storage class must be IA or Archive")
-				}
 			}
-		} else if rule.Expiration == nil && abortMPU == nil && rule.NonVersionExpiration == nil && rule.NonVersionTransition == nil {
-			return fmt.Errorf("invalid rule, must set one of Expiration, AbortMultipartUplaod, NonVersionExpiration, NonVersionTransition and Transitions")
+		}
+
+		// NonVersionTransition is not suggested to use
+		// to keep compatible
+		if rule.NonVersionTransition != nil && len(rule.NonVersionTransitions) > 0 {
+			return fmt.Errorf("NonVersionTransition and NonVersionTransitions cannot both have values")
+		} else if rule.NonVersionTransition != nil {
+			rules[k].NonVersionTransitions = append(rules[k].NonVersionTransitions, *rule.NonVersionTransition)
 		}
 	}
 
@@ -310,9 +311,10 @@ type BucketInfo struct {
 }
 
 type SSERule struct {
-	XMLName        xml.Name `xml:"ServerSideEncryptionRule"` // Bucket ServerSideEncryptionRule
-	KMSMasterKeyID string   `xml:"KMSMasterKeyID"`           // Bucket KMSMasterKeyID
-	SSEAlgorithm   string   `xml:"SSEAlgorithm"`             // Bucket SSEAlgorithm
+	XMLName           xml.Name `xml:"ServerSideEncryptionRule"`    // Bucket ServerSideEncryptionRule
+	KMSMasterKeyID    string   `xml:"KMSMasterKeyID,omitempty"`    // Bucket KMSMasterKeyID
+	SSEAlgorithm      string   `xml:"SSEAlgorithm,omitempty"`      // Bucket SSEAlgorithm
+	KMSDataEncryption string   `xml:"KMSDataEncryption,omitempty"` //Bucket KMSDataEncryption
 }
 
 // ListObjectsResult defines the result from ListObjects request
@@ -446,17 +448,17 @@ type UploadPart struct {
 	ETag       string   `xml:"ETag"`       // ETag value of the part's data
 }
 
-type uploadParts []UploadPart
+type UploadParts []UploadPart
 
-func (slice uploadParts) Len() int {
+func (slice UploadParts) Len() int {
 	return len(slice)
 }
 
-func (slice uploadParts) Less(i, j int) bool {
+func (slice UploadParts) Less(i, j int) bool {
 	return slice[i].PartNumber < slice[j].PartNumber
 }
 
-func (slice uploadParts) Swap(i, j int) {
+func (slice UploadParts) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
@@ -828,9 +830,10 @@ type ServerEncryptionRule struct {
 
 // Server Encryption deafult rule for the bucket
 type SSEDefaultRule struct {
-	XMLName        xml.Name `xml:"ApplyServerSideEncryptionByDefault"`
-	SSEAlgorithm   string   `xml:"SSEAlgorithm"`
-	KMSMasterKeyID string   `xml:"KMSMasterKeyID"`
+	XMLName           xml.Name `xml:"ApplyServerSideEncryptionByDefault"`
+	SSEAlgorithm      string   `xml:"SSEAlgorithm,omitempty"`
+	KMSMasterKeyID    string   `xml:"KMSMasterKeyID,omitempty"`
+	KMSDataEncryption string   `xml:"KMSDataEncryption,,omitempty"`
 }
 
 type GetBucketEncryptionResult ServerEncryptionRule
@@ -1077,4 +1080,99 @@ type MetaEndFrameJSON struct {
 	SplitsCount  int32
 	RowsCount    int64
 	ErrorMsg     string
+}
+
+// InventoryConfiguration is Inventory config
+type InventoryConfiguration struct {
+	XMLName                xml.Name             `xml:"InventoryConfiguration"`
+	Id                     string               `xml:"Id,omitempty"`
+	IsEnabled              *bool                `xml:"IsEnabled,omitempty"`
+	Prefix                 string               `xml:"Filter>Prefix,omitempty"`
+	OSSBucketDestination   OSSBucketDestination `xml:"Destination>OSSBucketDestination,omitempty"`
+	Frequency              string               `xml:"Schedule>Frequency,omitempty"`
+	IncludedObjectVersions string               `xml:"IncludedObjectVersions,omitempty"`
+	OptionalFields         OptionalFields       `xml:OptionalFields,omitempty`
+}
+
+type OptionalFields struct {
+	XMLName xml.Name `xml:"OptionalFields,omitempty`
+	Field   []string `xml:"Field,omitempty`
+}
+
+type OSSBucketDestination struct {
+	XMLName    xml.Name       `xml:"OSSBucketDestination"`
+	Format     string         `xml:"Format,omitempty"`
+	AccountId  string         `xml:"AccountId,omitempty"`
+	RoleArn    string         `xml:"RoleArn,omitempty"`
+	Bucket     string         `xml:"Bucket,omitempty"`
+	Prefix     string         `xml:"Prefix,omitempty"`
+	Encryption *InvEncryption `xml:"Encryption,omitempty"`
+}
+
+type InvEncryption struct {
+	XMLName xml.Name   `xml:"Encryption"`
+	SseOss  *InvSseOss `xml:"SSE-OSS"`
+	SseKms  *InvSseKms `xml:"SSE-KMS"`
+}
+
+type InvSseOss struct {
+	XMLName xml.Name `xml:"SSE-OSS"`
+}
+
+type InvSseKms struct {
+	XMLName xml.Name `xml:"SSE-KMS"`
+	KmsId   string   `xml:"KeyId,omitempty"`
+}
+
+type ListInventoryConfigurationsResult struct {
+	XMLName                xml.Name                 `xml:"ListInventoryConfigurationsResult"`
+	InventoryConfiguration []InventoryConfiguration `xml:"InventoryConfiguration,omitempty`
+	IsTruncated            *bool                    `xml:"IsTruncated,omitempty"`
+	NextContinuationToken  string                   `xml:"NextContinuationToken,omitempty"`
+}
+
+// RestoreConfiguration for RestoreObject
+type RestoreConfiguration struct {
+	XMLName xml.Name `xml:"RestoreRequest"`
+	Days    int32    `xml:"Days,omitempty"`
+	Tier    string   `xml:"JobParameters>Tier,omitempty"`
+}
+
+// AsyncFetchTaskConfiguration for SetBucketAsyncFetchTask
+type AsyncFetchTaskConfiguration struct {
+	XMLName       xml.Name `xml:"AsyncFetchTaskConfiguration"`
+	Url           string   `xml:"Url,omitempty"`
+	Object        string   `xml:"Object,omitempty"`
+	Host          string   `xml:"Host,omitempty"`
+	ContentMD5    string   `xml:"ContentMD5,omitempty"`
+	Callback      string   `xml:"Callback,omitempty"`
+	StorageClass  string   `xml:"StorageClass,omitempty"`
+	IgnoreSameKey bool     `xml:"IgnoreSameKey"`
+}
+
+// AsyncFetchTaskResult for SetBucketAsyncFetchTask result
+type AsyncFetchTaskResult struct {
+	XMLName xml.Name `xml:"AsyncFetchTaskResult"`
+	TaskId  string   `xml:"TaskId,omitempty"`
+}
+
+// AsynFetchTaskInfo for GetBucketAsyncFetchTask result
+type AsynFetchTaskInfo struct {
+	XMLName  xml.Name      `xml:"AsyncFetchTaskInfo"`
+	TaskId   string        `xml:"TaskId,omitempty"`
+	State    string        `xml:"State,omitempty"`
+	ErrorMsg string        `xml:"ErrorMsg,omitempty"`
+	TaskInfo AsyncTaskInfo `xml:"TaskInfo,omitempty"`
+}
+
+// AsyncTaskInfo for async task information
+type AsyncTaskInfo struct {
+	XMLName       xml.Name `xml:"TaskInfo"`
+	Url           string   `xml:"Url,omitempty"`
+	Object        string   `xml:"Object,omitempty"`
+	Host          string   `xml:"Host,omitempty"`
+	ContentMD5    string   `xml:"ContentMD5,omitempty"`
+	Callback      string   `xml:"Callback,omitempty"`
+	StorageClass  string   `xml:"StorageClass,omitempty"`
+	IgnoreSameKey bool     `xml:"IgnoreSameKey"`
 }

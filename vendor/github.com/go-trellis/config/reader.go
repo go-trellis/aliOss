@@ -3,10 +3,14 @@
 
 package config
 
-import "io/ioutil"
+import (
+	"github.com/go-trellis/common/files"
+)
 
 // ReaderType define reader type
 type ReaderType int
+
+var filesRepo = files.New()
 
 const (
 	// ReaderTypeSuffix judge by file suffix
@@ -22,27 +26,40 @@ const (
 // Reader reader repo
 type Reader interface {
 	// read file into model
-	Read(path string, model interface{}) error
+	Read(model interface{}) error
 	// dump configs' cache
 	Dump(model interface{}) ([]byte, error)
+	// parse data to model
+	ParseData(data []byte, model interface{}) error
 }
 
-// NewReader return a reader by ReaderType
-func NewReader(rt ReaderType) Reader {
-	switch rt {
-	case ReaderTypeJSON:
-		return NewJSONReader()
-	case ReaderTypeXML:
-		return NewXMLReader()
-	case ReaderTypeYAML:
-		return NewYAMLReader()
-	default:
-		return NewSuffixReader()
+// ReaderOptionFunc declare reader option function
+type ReaderOptionFunc func(*ReaderOptions)
+
+//ReaderOptions reader options
+type ReaderOptions struct {
+	filename string
+}
+
+// ReaderOptionFilename set reader filename
+func ReaderOptionFilename(filename string) ReaderOptionFunc {
+	return func(opts *ReaderOptions) {
+		opts.filename = filename
 	}
 }
 
-func readFile(name string) ([]byte, error) {
-	return ioutil.ReadFile(name)
+// NewReader return a reader by ReaderType
+func NewReader(rt ReaderType, filename string) (Reader, error) {
+	switch rt {
+	case ReaderTypeJSON:
+		return NewJSONReader(ReaderOptionFilename(filename)), nil
+	case ReaderTypeXML:
+		return NewXMLReader(ReaderOptionFilename(filename)), nil
+	case ReaderTypeYAML:
+		return NewYAMLReader(ReaderOptionFilename(filename)), nil
+	default:
+		return nil, ErrNotSupportedReaderType
+	}
 }
 
 /*
@@ -66,9 +83,7 @@ and IDEOGRAPHIC SPACE (\u3000)
 Byte Order Mark (\uFEFF)
 */
 func isWhitespace(c byte) bool {
-	str := string(c)
-
-	switch str {
+	switch string(c) {
 	case " ", "\t", "\n", "\u000B", "\u000C",
 		"\u000D", "\u00A0", "\u1680", "\u2000",
 		"\u2001", "\u2002", "\u2003", "\u2004",
