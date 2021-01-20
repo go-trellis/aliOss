@@ -342,6 +342,20 @@ type ObjectProperties struct {
 	StorageClass string    `xml:"StorageClass"` // Object storage class (Standard, IA, Archive)
 }
 
+// ListObjectsResultV2 defines the result from ListObjectsV2 request
+type ListObjectsResultV2 struct {
+	XMLName               xml.Name           `xml:"ListBucketResult"`
+	Prefix                string             `xml:"Prefix"`                // The object prefix
+	StartAfter            string             `xml:"StartAfter"`            // the input StartAfter
+	ContinuationToken     string             `xml:"ContinuationToken"`     // the input ContinuationToken
+	MaxKeys               int                `xml:"MaxKeys"`               // Max keys to return
+	Delimiter             string             `xml:"Delimiter"`             // The delimiter for grouping objects' name
+	IsTruncated           bool               `xml:"IsTruncated"`           // Flag indicates if all results are returned (when it's false)
+	NextContinuationToken string             `xml:"NextContinuationToken"` // The start point of the next NextContinuationToken
+	Objects               []ObjectProperties `xml:"Contents"`              // Object list
+	CommonPrefixes        []string           `xml:"CommonPrefixes>Prefix"` // You can think of commonprefixes as "folders" whose names end with the delimiter
+}
+
 // ListObjectVersionsResult defines the result from ListObjectVersions request
 type ListObjectVersionsResult struct {
 	XMLName             xml.Name                       `xml:"ListVersionsResult"`
@@ -564,6 +578,40 @@ func decodeListObjectsResult(result *ListObjectsResult) error {
 		return err
 	}
 	result.NextMarker, err = url.QueryUnescape(result.NextMarker)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(result.Objects); i++ {
+		result.Objects[i].Key, err = url.QueryUnescape(result.Objects[i].Key)
+		if err != nil {
+			return err
+		}
+	}
+	for i := 0; i < len(result.CommonPrefixes); i++ {
+		result.CommonPrefixes[i], err = url.QueryUnescape(result.CommonPrefixes[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// decodeListObjectsResult decodes list objects result in URL encoding
+func decodeListObjectsResultV2(result *ListObjectsResultV2) error {
+	var err error
+	result.Prefix, err = url.QueryUnescape(result.Prefix)
+	if err != nil {
+		return err
+	}
+	result.StartAfter, err = url.QueryUnescape(result.StartAfter)
+	if err != nil {
+		return err
+	}
+	result.Delimiter, err = url.QueryUnescape(result.Delimiter)
+	if err != nil {
+		return err
+	}
+	result.NextContinuationToken, err = url.QueryUnescape(result.NextContinuationToken)
 	if err != nil {
 		return err
 	}
@@ -1175,4 +1223,25 @@ type AsyncTaskInfo struct {
 	Callback      string   `xml:"Callback,omitempty"`
 	StorageClass  string   `xml:"StorageClass,omitempty"`
 	IgnoreSameKey bool     `xml:"IgnoreSameKey"`
+}
+
+// InitiateWormConfiguration define InitiateBucketWorm configuration
+type InitiateWormConfiguration struct {
+	XMLName               xml.Name `xml:"InitiateWormConfiguration"`
+	RetentionPeriodInDays int      `xml:"RetentionPeriodInDays"` // specify retention days
+}
+
+// ExtendWormConfiguration define ExtendWormConfiguration configuration
+type ExtendWormConfiguration struct {
+	XMLName               xml.Name `xml:"ExtendWormConfiguration"`
+	RetentionPeriodInDays int      `xml:"RetentionPeriodInDays"` // specify retention days
+}
+
+// WormConfiguration define WormConfiguration
+type WormConfiguration struct {
+	XMLName               xml.Name `xml:"WormConfiguration"`
+	WormId                string   `xml:"WormId,omitempty"`
+	State                 string   `xml:"State,omitempty"`
+	RetentionPeriodInDays int      `xml:"RetentionPeriodInDays"` // specify retention days
+	CreationDate          string   `xml:"CreationDate,omitempty"`
 }

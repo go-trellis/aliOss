@@ -1,19 +1,19 @@
-# github.com/aliyun/aliyun-oss-go-sdk v2.1.4+incompatible
+# github.com/aliyun/aliyun-oss-go-sdk v2.1.6+incompatible
 github.com/aliyun/aliyun-oss-go-sdk/oss
-# github.com/go-trellis/common v0.0.0-20201109093531-dd6cf5c3eb27
-github.com/go-trellis/common/files
-github.com/go-trellis/common/formats
-# github.com/go-trellis/config v0.0.0-20201109094531-d08a44a0456a
-github.com/go-trellis/config
-# github.com/satori/go.uuid v1.2.0
-github.com/satori/go.uuid
-# golang.org/x/text v0.3.4
+# github.com/google/uuid v1.1.5
+github.com/google/uuid
+# github.com/iTrellis/common v0.20.0
+github.com/iTrellis/common/files
+github.com/iTrellis/common/formats
+# github.com/iTrellis/config v0.20.0
+github.com/iTrellis/config
+# golang.org/x/text v0.3.5
 golang.org/x/text/encoding
 golang.org/x/text/encoding/internal
 golang.org/x/text/encoding/internal/identifier
 golang.org/x/text/encoding/simplifiedchinese
 golang.org/x/text/transform
-# golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
+# golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
 golang.org/x/time/rate
-# gopkg.in/yaml.v2 v2.3.0
+# gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
